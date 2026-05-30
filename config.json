@@ -1,0 +1,8 @@
+{
+  "target_start_date": "2026-07-15",
+  "target_end_date": null,
+  "availability_mode": "on_or_after",
+  "target_bedrooms": 1,
+  "needed_units": 2,
+  "notify_on_first_run": true
+}

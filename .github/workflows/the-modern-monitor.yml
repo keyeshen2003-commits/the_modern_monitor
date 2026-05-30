@@ -1,0 +1,38 @@
+name: The Modern monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: the-modern-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      WECHAT_PROVIDER: ${{ secrets.WECHAT_PROVIDER }}
+      PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+      PUSHPLUS_CHANNEL: ${{ secrets.PUSHPLUS_CHANNEL }}
+      PUSHPLUS_TEMPLATE: ${{ secrets.PUSHPLUS_TEMPLATE }}
+      SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+      WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check The Modern availability
+        run: python monitor.py --push
+      - name: Save notification state
+        run: |
+          git config user.name "the-modern-monitor"
+          git config user.email "the-modern-monitor@users.noreply.github.com"
+          git add data/state.json
+          git diff --cached --quiet || git commit -m "Update The Modern monitor state [skip ci]"
+          git push
