@@ -4,6 +4,23 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      push_test:
+        description: "Send a test push instead of checking apartments"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      force_notify:
+        description: "Push all current matching apartments, even if already seen"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
   contents: write
@@ -28,7 +45,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Check The Modern availability
-        run: python monitor.py --push
+        run: |
+          if [ "${{ github.event.inputs.push_test || 'false' }}" = "true" ]; then
+            python monitor.py --push-test
+          elif [ "${{ github.event.inputs.force_notify || 'false' }}" = "true" ]; then
+            python monitor.py --push --force-notify
+          else
+            python monitor.py --push
+          fi
       - name: Save notification state
         run: |
           git config user.name "the-modern-monitor"

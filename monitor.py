@@ -243,17 +243,37 @@ def push(title, content):
             "template": os.environ.get("PUSHPLUS_TEMPLATE") or "markdown",
             "channel": os.environ.get("PUSHPLUS_CHANNEL") or "wechat",
         }
-        return post_json("https://www.pushplus.plus/send", payload)
+        status, body = post_json("https://www.pushplus.plus/send", payload)
+        print(f"PushPlus response: HTTP {status} {body}")
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"PushPlus returned non-JSON response: {body}") from exc
+        if status != 200 or int(parsed.get("code", -1)) != 200:
+            raise RuntimeError(f"PushPlus send failed: {body}")
+        return status, body
     if provider == "serverchan":
         sendkey = os.environ.get("SERVERCHAN_SENDKEY", "")
         if not sendkey:
             raise RuntimeError("Missing SERVERCHAN_SENDKEY")
-        return post_form(f"https://sctapi.ftqq.com/{sendkey}.send", {"title": title, "desp": content})
+        status, body = post_form(f"https://sctapi.ftqq.com/{sendkey}.send", {"title": title, "desp": content})
+        print(f"ServerChan response: HTTP {status} {body}")
+        if status != 200:
+            raise RuntimeError(f"ServerChan send failed: {body}")
+        return status, body
     if provider == "wecom":
         webhook = os.environ.get("WECOM_WEBHOOK", "")
         if not webhook:
             raise RuntimeError("Missing WECOM_WEBHOOK")
-        return post_json(webhook, {"msgtype": "markdown", "markdown": {"content": f"**{title}**\n\n{content}"}})
+        status, body = post_json(webhook, {"msgtype": "markdown", "markdown": {"content": f"**{title}**\n\n{content}"}})
+        print(f"WeCom response: HTTP {status} {body}")
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"WeCom returned non-JSON response: {body}") from exc
+        if status != 200 or int(parsed.get("errcode", -1)) != 0:
+            raise RuntimeError(f"WeCom send failed: {body}")
+        return status, body
     raise RuntimeError(f"Unsupported WECHAT_PROVIDER: {provider}")
 
 
@@ -264,7 +284,7 @@ def run(args):
 
     config = load_config()
     if args.push_test:
-        return push("The Modern 监控测试", "微信推送通道已连通。")
+        return push("The Modern 监控测试", "微信推送通道已连通。如果你看到这条，说明 GitHub Actions 到手机的推送链路是通的。")
 
     state = load_state()
     seen = set(state.get("seen_fingerprints", []))
@@ -277,7 +297,7 @@ def run(args):
     if first_run and not config.get("notify_on_first_run", True):
         new_units = []
     else:
-        new_units = [unit for unit in matches if fingerprint(unit) not in seen]
+        new_units = matches if args.force_notify else [unit for unit in matches if fingerprint(unit) not in seen]
 
     print(f"Fetched {len(all_units)} one-bedroom units.")
     print(f"Matched {len(matches)} target units.")
@@ -314,6 +334,7 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor The Modern Fort Lee 1B1B availability.")
     parser.add_argument("--push", action="store_true", help="Send WeChat notification for new matches.")
     parser.add_argument("--push-test", action="store_true", help="Send a one-off test notification.")
+    parser.add_argument("--force-notify", action="store_true", help="Notify all current matches even if they were already seen.")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and print matches without sending or saving state.")
     parser.add_argument("--env-file", default="", help="Optional .env file to load for local testing.")
     args = parser.parse_args()
