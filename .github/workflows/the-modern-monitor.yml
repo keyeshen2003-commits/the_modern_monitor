@@ -54,9 +54,18 @@ jobs:
             python monitor.py --push
           fi
       - name: Save notification state
+        if: ${{ github.event.inputs.push_test != 'true' }}
         run: |
           git config user.name "the-modern-monitor"
           git config user.email "the-modern-monitor@users.noreply.github.com"
+          if git diff --quiet -- data/state.json; then
+            echo "No state changes to save."
+            exit 0
+          fi
+          cp data/state.json /tmp/the-modern-state.json
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/the-modern-state.json data/state.json
           git add data/state.json
           git diff --cached --quiet || git commit -m "Update The Modern monitor state [skip ci]"
           git push
