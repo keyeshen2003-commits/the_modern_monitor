@@ -49,6 +49,15 @@ def save_state(state):
     STATE_PATH.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n")
 
 
+def load_seen_units(state):
+    seen = set(state.get("seen_units", []))
+    for old_fingerprint in state.get("seen_fingerprints", []):
+        unit = str(old_fingerprint).split("|", 1)[0].strip()
+        if unit:
+            seen.add(unit)
+    return seen
+
+
 def request_text(url, data=None):
     headers = {
         "User-Agent": (
@@ -185,6 +194,10 @@ def fingerprint(unit):
     return "|".join([unit["unit"], unit["available"], unit["price"], unit["floor_plan"]])
 
 
+def unit_key(unit):
+    return unit["unit"]
+
+
 def money(value):
     value = value.strip()
     if not value:
@@ -287,17 +300,17 @@ def run(args):
         return push("The Modern 监控测试", "微信推送通道已连通。如果你看到这条，说明 GitHub Actions 到手机的推送链路是通的。")
 
     state = load_state()
-    seen = set(state.get("seen_fingerprints", []))
+    seen_units = load_seen_units(state)
     all_units = fetch_all_units()
     matches = [unit for unit in all_units if unit_matches(unit, config)]
     matches.sort(key=lambda item: (item["available_date"], item["price"], item["unit"]))
-    current_fingerprints = {fingerprint(unit) for unit in matches}
+    current_units = {unit_key(unit) for unit in matches}
 
-    first_run = not seen
+    first_run = not seen_units
     if first_run and not config.get("notify_on_first_run", True):
         new_units = []
     else:
-        new_units = matches if args.force_notify else [unit for unit in matches if fingerprint(unit) not in seen]
+        new_units = matches if args.force_notify else [unit for unit in matches if unit_key(unit) not in seen_units]
 
     print(f"Fetched {len(all_units)} one-bedroom units.")
     print(f"Matched {len(matches)} target units.")
@@ -320,9 +333,12 @@ def run(args):
     else:
         print("No new matching units.")
 
-    updated_seen = sorted(seen | current_fingerprints)
-    if updated_seen != sorted(seen):
-        state["seen_fingerprints"] = updated_seen
+    updated_seen_units = sorted(seen_units | current_units)
+    current_fingerprints = sorted(fingerprint(unit) for unit in matches)
+    if updated_seen_units != sorted(seen_units) or current_fingerprints != state.get("last_seen_fingerprints", []):
+        state["seen_units"] = updated_seen_units
+        state["last_seen_fingerprints"] = current_fingerprints
+        state.pop("seen_fingerprints", None)
         state["updated_at"] = datetime.now(timezone.utc).isoformat()
         save_state(state)
         changed = True
