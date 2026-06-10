@@ -1,11 +1,11 @@
 # The Modern Fort Lee Monitor
 
-This monitors The Modern's official availability page for one-bedroom apartments available on or after July 15, 2026, then sends a WeChat-compatible push when a new matching unit appears.
+This monitors The Modern's official availability page for target apartment layouts available on or after July 15, 2026, then sends a WeChat-compatible push when a new matching unit appears.
 
 Default target:
 
 - Building: The Modern, Fort Lee
-- Layout: 1 bedroom, any bathroom count
+- Layout: 1 bedroom, plus 2 bedroom / 2 bath, including 2 bedroom / 2 bath + den
 - Availability: on or after `2026-07-15`
 - Needed units: `2`
 - Check frequency: every 5 minutes on GitHub Actions
@@ -34,17 +34,17 @@ From this folder:
 
 ```bash
 python3 monitor.py --dry-run
-python3 monitor.py --push-test --env-file /Users/keyeshen/Desktop/ibkr_daily_briefing/.env
-python3 monitor.py --push --env-file /Users/keyeshen/Desktop/ibkr_daily_briefing/.env
+python3 monitor.py --push-test --env-file /Users/keyeshen/Desktop/codex/ibkr_daily_briefing/.env
+python3 monitor.py --push --env-file /Users/keyeshen/Desktop/codex/ibkr_daily_briefing/.env
 ```
 
 ## Adjust The Target
 
 Edit `config.json`.
 
-- `target_bedrooms: 1` means any one-bedroom apartment, including `1 / 1` and `1 / 1.5`.
+- `target_layouts` controls accepted layouts. The current setup allows 1BR and 2BR / 2BA.
 - `availability_mode: "within_range"` means only dates between `target_start_date` and `target_end_date`.
 - `availability_mode: "on_or_after"` means anything available on or after `target_start_date`.
 - `availability_mode: "on_or_before"` means anything available by `target_start_date`.
 
-For your current request, `on_or_after` with `target_start_date: "2026-07-15"` is the cleanest interpretation.
+For your current request, `on_or_after` with `target_start_date: "2026-07-15"` keeps the date filter broad while watching the selected layouts.

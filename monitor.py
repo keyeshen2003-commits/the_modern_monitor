@@ -14,11 +14,19 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
 STATE_PATH = ROOT / "data" / "state.json"
+AVAILABILITY_PAGE_URL = "https://www.themodernlife.com/availability/"
 AVAILABILITY_URL = (
     "https://www.themodernlife.com/availability/apartment?"
     "availability=&bed=1&building=&floor=&order=ASC&param=avail"
 )
 AJAX_URL = "https://www.themodernlife.com/wp-content/themes/the-modern/floorplans-list-ajax.php"
+
+
+def availability_url(bedrooms):
+    return (
+        "https://www.themodernlife.com/availability/apartment?"
+        f"availability=&bed={bedrooms}&building=&floor=&order=ASC&param=avail"
+    )
 
 
 def load_env(path):
@@ -98,6 +106,18 @@ def parse_date(value):
     return None
 
 
+def parse_bed_bath(value):
+    match = re.match(r"\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)", value or "")
+    if not match:
+        return None, None
+    return float(match.group(1)), float(match.group(2))
+
+
+def has_den(unit):
+    text = f"{unit.get('floor_plan', '')} {unit.get('bed_bath', '')}".lower()
+    return bool(re.search(r"\bden\b", text))
+
+
 def parse_floorplans(page_html):
     units = []
     for block in page_html.split('class="flrpln_list_content"')[1:]:
@@ -139,14 +159,15 @@ def parse_floorplans(page_html):
                 "available_date": parse_date(available).isoformat() if parse_date(available) else "",
                 "floor_plan": floor_plan,
                 "apply_url": html.unescape(apply_match.group(1)) if apply_match else "",
-                "source_url": AVAILABILITY_URL,
+                "source_url": "",
             }
         )
     return units
 
 
-def fetch_all_units():
-    first_page = request_text(AVAILABILITY_URL)
+def fetch_bedroom_units(bedrooms):
+    source_url = availability_url(bedrooms)
+    first_page = request_text(source_url)
     total_match = re.search(r'id="total_page" value="(\d+)"', first_page)
     condition_match = re.search(r'id="condition" value="([^"]+)"', first_page)
     total_pages = int(total_match.group(1)) if total_match else 1
@@ -159,6 +180,26 @@ def fetch_all_units():
         ajax_html = request_text(AJAX_URL, {"page": str(page), "condition": condition})
         units.extend(parse_floorplans(ajax_html))
 
+    for unit in units:
+        unit["source_url"] = source_url
+    return units
+
+
+def target_bedrooms(config):
+    bedrooms = set()
+    for layout in config.get("target_layouts", []):
+        if "bedrooms" in layout:
+            bedrooms.add(int(layout["bedrooms"]))
+    if not bedrooms and config.get("target_bedrooms") is not None:
+        bedrooms.add(int(config["target_bedrooms"]))
+    return sorted(bedrooms or [1])
+
+
+def fetch_all_units(config):
+    units = []
+    for bedrooms in target_bedrooms(config):
+        units.extend(fetch_bedroom_units(bedrooms))
+
     unique = {}
     for unit in units:
         unique[unit["unit"]] = unit
@@ -166,13 +207,28 @@ def fetch_all_units():
 
 
 def unit_matches(unit, config):
-    target_bedrooms = config.get("target_bedrooms")
-    if target_bedrooms is not None:
-        bed_match = re.match(r"\s*(\d+(?:\.\d+)?)\s*/", unit["bed_bath"])
-        if not bed_match or float(bed_match.group(1)) != float(target_bedrooms):
+    bedrooms, bathrooms = parse_bed_bath(unit["bed_bath"])
+    layouts = config.get("target_layouts", [])
+    if layouts:
+        layout_matched = False
+        for layout in layouts:
+            if bedrooms != float(layout["bedrooms"]):
+                continue
+            if layout.get("bathrooms") is not None and bathrooms != float(layout["bathrooms"]):
+                continue
+            if layout.get("requires_den") and not has_den(unit):
+                continue
+            layout_matched = True
+            break
+        if not layout_matched:
             return False
-    elif unit["bed_bath"] != config["target_bed_bath"]:
-        return False
+    else:
+        target = config.get("target_bedrooms")
+        if target is not None:
+            if bedrooms != float(target):
+                return False
+        elif unit["bed_bath"] != config["target_bed_bath"]:
+            return False
     available = parse_date(unit["available"])
     if not available:
         return False
@@ -206,7 +262,10 @@ def money(value):
 
 
 def build_message(new_units, all_matches, config):
-    target = f"{config.get('target_bedrooms')} bedroom" if config.get("target_bedrooms") is not None else config["target_bed_bath"]
+    if config.get("target_layouts"):
+        target = "、".join(layout.get("label", f"{layout['bedrooms']}BR") for layout in config["target_layouts"])
+    else:
+        target = f"{config.get('target_bedrooms')} bedroom" if config.get("target_bedrooms") is not None else config["target_bed_bath"]
     end = config.get("target_end_date") or "以后"
     lines = [
         f"目标：{config['target_start_date']} 到 {end}，{target}，需要 {config.get('needed_units', 2)} 套",
@@ -225,7 +284,7 @@ def build_message(new_units, all_matches, config):
                 "",
             ]
         )
-    lines.append(f"[查看官网房源]({AVAILABILITY_URL})")
+    lines.append(f"[查看官网房源]({AVAILABILITY_PAGE_URL})")
     return "\n".join(lines)
 
 
@@ -301,7 +360,7 @@ def run(args):
 
     state = load_state()
     seen_units = load_seen_units(state)
-    all_units = fetch_all_units()
+    all_units = fetch_all_units(config)
     matches = [unit for unit in all_units if unit_matches(unit, config)]
     matches.sort(key=lambda item: (item["available_date"], item["price"], item["unit"]))
     current_units = {unit_key(unit) for unit in matches}
@@ -312,7 +371,7 @@ def run(args):
     else:
         new_units = matches if args.force_notify else [unit for unit in matches if unit_key(unit) not in seen_units]
 
-    print(f"Fetched {len(all_units)} one-bedroom units.")
+    print(f"Fetched {len(all_units)} available units.")
     print(f"Matched {len(matches)} target units.")
     for unit in matches:
         print(f"- {unit['unit']} {unit['available']} {money(unit['price'])} {unit['floor_plan']}")
@@ -322,7 +381,7 @@ def run(args):
 
     changed = False
     if new_units:
-        title = f"The Modern 新增 {len(new_units)} 套 7/15后 1BR"
+        title = f"The Modern 新增 {len(new_units)} 套 7/15后房源"
         if len(matches) >= int(config.get("needed_units", 2)):
             title += "，已够两套"
         content = build_message(new_units, matches, config)
