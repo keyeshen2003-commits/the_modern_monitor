@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-15T05:16:40.157613+00:00",
+  "updated_at": "2026-07-15T15:50:52.186759+00:00",
   "seen_units": [
     "0605",
     "0805",
@@ -58,9 +58,9 @@
     "PH8F"
   ],
   "last_seen_fingerprints": [
-    "0605|now|$4063|800 Park 1 Bed/1 Bath-A3",
-    "0805|now|$4093|800 Park 1 Bed/1 Bath-A3",
-    "0901|now|$4088|800 Park 1 Bed/1 Bath-A8",
+    "0605|now|$4083|800 Park 1 Bed/1 Bath-A3",
+    "0805|now|$4113|800 Park 1 Bed/1 Bath-A3",
+    "0901|now|$4108|800 Park 1 Bed/1 Bath-A8",
     "100-0607|now|$4218|100 Park 1 Bed 1 Bath",
     "100-0707|09/14/2026|$4135|100 Park 1 Bed 1 Bath",
     "100-2103|08/21/2026|$4826|100 Park 1 Bed 1 Bath",
@@ -81,20 +81,20 @@
     "100-PH7D|now|$4912|100 Park 1 Bed 1 Bath",
     "100-PH8E|09/21/2026|$4820|100 Park 1 Bed 1 Bath",
     "100-PH8F|now|$6102|100 Park 2 Bed 2 Bath",
-    "1201|now|$4133|800 Park 1 Bed/1 Bath-A8",
-    "1601|now|$4178|800 Park 1 Bed/1 Bath-A8",
-    "1805|now|$4228|800 Park 1 Bed/1 Bath-A3",
+    "1201|now|$4199|800 Park 1 Bed/1 Bath-A8",
+    "1601|now|$4198|800 Park 1 Bed/1 Bath-A8",
+    "1805|now|$4248|800 Park 1 Bed/1 Bath-A3",
     "2509|09/06/2026|$4369|800 Park 1 Bed/1 Bath-A5",
     "2605|07/29/2026|$4359|800 Park 1 Bed/1 Bath-A3",
-    "3001|now|$4388|800 Park 1 Bed/1 Bath-A8",
-    "3705|now|$4513|800 Park 1 Bed/1 Bath-A3",
+    "3001|now|$4408|800 Park 1 Bed/1 Bath-A8",
+    "3705|now|$4533|800 Park 1 Bed/1 Bath-A3",
     "3706|now|$5960|800 Park 2 Bed/2 Bath-B3",
-    "3805|now|$4528|800 Park 1 Bed/1 Bath-A3",
-    "PH1A|07/26/2026|$6800|800 Park 2 Bed/2 Bath-B9",
+    "3805|now|$4548|800 Park 1 Bed/1 Bath-A3",
+    "PH1A|07/26/2026|$6846|800 Park 2 Bed/2 Bath-B9",
     "PH1E|now|$6725|800 Park 2 Bed/2 Bath-B3",
-    "PH3A|now|$4613|800 Park 1 Bed/1 Bath-A8",
-    "PH4A|now|$4613|800 Park 1 Bed/1 Bath-A8",
-    "PH7E|now|$4618|800 Park 1 Bed/1 Bath-A3",
+    "PH3A|now|$4633|800 Park 1 Bed/1 Bath-A8",
+    "PH4A|now|$4633|800 Park 1 Bed/1 Bath-A8",
+    "PH7E|now|$4638|800 Park 1 Bed/1 Bath-A3",
     "PH7F|now|$6065|800 Park 2 Bed/2 Bath-B3"
   ]
 }
